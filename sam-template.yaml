@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources: 
+
+  CreateObjectMethod:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Runtime: python3.8
+      Events:
+        PostEvent:
+          Type: Api
+          Properties:
+            Method: post
+            Path: api/objects
+      Handler: create_object.handler
+      # Only creates objects, should not be allowed to update existing objects
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: 
+                - dynamodb:PutItem
+              Resource: !Ref NOSQLObjectStorage
+
+  PutObjectMethod:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Runtime: python3.8
+      Events:
+        PostEvent:
+          Type: Api
+          Properties:
+            Method: put
+            Path: api/objects/{object_uid}
+            RequestParameters:
+              - method.request.object_uuid:
+                  Required: true
+      Handler: update_object.handler
+      # Only updates objects, 404 if object is not found
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: 
+                - dynamodb:UpdateItem
+              Resource: !Ref NOSQLObjectStorage
+  
+  # Handles both single object and objects requests
+  GetObjectMethod:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Runtime: python3.8
+      Events:
+        PostEvent:
+          Type: Api
+          Properties:
+            Method: get
+            Path: api/objects/{object_uid}
+            RequestParameters:
+              - method.request.object_uid
+      Handler: get_object.handler
+      # Only gets objects, 404 if object is not found
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: 
+                - dynamodb:GetItem
+              Resource: !Ref NOSQLObjectStorage
+  
+  DeleteObjectMethod:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Runtime: python3.8
+      Events:
+        PostEvent:
+          Type: Api
+          Properties:
+            Method: delete
+            Path: api/objects/{object_uid}
+            RequestParameters:
+              - method.request.object_uid:
+                  Required: true
+      Handler: delete_object.handler
+      # Only deletes objects, 404 if object is not found
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: 
+                - dynamodb:DeleteItem
+              Resource: !Ref NOSQLObjectStorage
+
+  NOSQLObjectStorage:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: UUID
+        Type: String
