@@ -1,19 +1,25 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Globals:
+  Function:
+    Environment:
+      Variables:
+        DYNAMO_DB_TABLE_ARN: !Ref NOSQLObjectStorage
+    CodeUri: ./src
+    Runtime: python3.8
+
 Resources: 
 
   CreateObjectMethod:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./src
-      Runtime: python3.8
       Events:
         PostEvent:
-          Type: Api
+          Type: HttpApi
           Properties:
             Method: post
-            Path: api/objects
+            Path: /api/objects
       Handler: create_object.handler
       # Only creates objects, should not be allowed to update existing objects
       Policies:
@@ -22,22 +28,24 @@ Resources:
             - Effect: Allow
               Action: 
                 - dynamodb:PutItem
-              Resource: !Ref NOSQLObjectStorage
+              Resource: !GetAtt NOSQLObjectStorage.Arn
+
+  CreateObjectMethodLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ CreateObjectMethod ]
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CreateObjectMethod}
+      RetentionInDays: 7
 
   PutObjectMethod:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./src
-      Runtime: python3.8
       Events:
         PostEvent:
-          Type: Api
+          Type: HttpApi
           Properties:
             Method: put
-            Path: api/objects/{object_uid}
-            RequestParameters:
-              - method.request.object_uuid:
-                  Required: true
+            Path: /api/objects/{object_uid}
       Handler: update_object.handler
       # Only updates objects, 404 if object is not found
       Policies:
@@ -46,23 +54,26 @@ Resources:
             - Effect: Allow
               Action: 
                 - dynamodb:UpdateItem
-              Resource: !Ref NOSQLObjectStorage
-  
-  # Handles both single object and objects requests
+              Resource: !GetAtt NOSQLObjectStorage.Arn
+
+  PutObjectMethodLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ PutObjectMethod ]
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PutObjectMethod}
+      RetentionInDays: 7
+
+  # Handles a single object
   GetObjectMethod:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./src
-      Runtime: python3.8
       Events:
         PostEvent:
-          Type: Api
+          Type: HttpApi
           Properties:
             Method: get
-            Path: api/objects/{object_uid}
-            RequestParameters:
-              - method.request.object_uid
-      Handler: get_object.handler
+            Path: /api/objects/{object_uid}
+      Handler: get_object.handle_single
       # Only gets objects, 404 if object is not found
       Policies:
         - Version: 2012-10-17
@@ -70,22 +81,51 @@ Resources:
             - Effect: Allow
               Action: 
                 - dynamodb:GetItem
-              Resource: !Ref NOSQLObjectStorage
-  
+              Resource: !GetAtt NOSQLObjectStorage.Arn
+
+  GetObjectMethodLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ GetObjectMethod ]
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetObjectMethod}
+      RetentionInDays: 7
+
+  # Handles multiple objects
+  GetObjectsMethod:
+    Type: AWS::Serverless::Function
+    Properties:
+      Events:
+        PostEvent:
+          Type: HttpApi
+          Properties:
+            Method: get
+            Path: /api/objects
+      Handler: get_object.handle_multiple
+      # Only gets objects, 404 if object is not found
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt NOSQLObjectStorage.Arn
+
+  GetObjectsMethodLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ GetObjectsMethod ]
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetObjectsMethod}
+      RetentionInDays: 7
+
   DeleteObjectMethod:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./src
-      Runtime: python3.8
       Events:
         PostEvent:
-          Type: Api
+          Type: HttpApi
           Properties:
             Method: delete
-            Path: api/objects/{object_uid}
-            RequestParameters:
-              - method.request.object_uid:
-                  Required: true
+            Path: /api/objects/{object_uid}
       Handler: delete_object.handler
       # Only deletes objects, 404 if object is not found
       Policies:
@@ -94,11 +134,18 @@ Resources:
             - Effect: Allow
               Action: 
                 - dynamodb:DeleteItem
-              Resource: !Ref NOSQLObjectStorage
+              Resource: !GetAtt NOSQLObjectStorage.Arn
+
+  DeleteObjectMethodLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ DeleteObjectMethod ]
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DeleteObjectMethod}
+      RetentionInDays: 7
 
   NOSQLObjectStorage:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey:
-        Name: UUID
+        Name: uid
         Type: String

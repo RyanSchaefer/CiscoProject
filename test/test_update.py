@@ -1,5 +1,5 @@
 from src import update_object as o_obj
-from mock_db import MockDatabase
+from mock_db import create_db
 import pytest
 import json
 
@@ -19,8 +19,8 @@ INP = json.dumps({
 
 
 def test_update():
-    starting_db = MockDatabase(STARTING_DB_INPUT)
-    actual: dict = o_obj.handle_helper(
+    starting_db = create_db()
+    actual: dict = o_obj.update_object_in_db(
         starting_db,
         "some_uid",
         INP
@@ -29,13 +29,13 @@ def test_update():
 
 
 def test_update_twice_same_result():
-    starting_db = MockDatabase(STARTING_DB_INPUT)
-    actual: dict = o_obj.handle_helper(
+    starting_db = create_db()
+    actual: dict = o_obj.update_object_in_db(
         starting_db,
         "some_uid",
         INP
     )
-    actual2: dict = o_obj.handle_helper(
+    actual2: dict = o_obj.update_object_in_db(
         starting_db,
         "some_uid",
         INP
@@ -44,9 +44,9 @@ def test_update_twice_same_result():
 
 
 def test_no_uid_causes_error():
-    empty = MockDatabase()
+    empty = create_db()
     with pytest.raises(ValueError):
-        o_obj.handle_helper(
+        o_obj.update_object_in_db(
             empty,
             "any_uid",
             INP
@@ -54,7 +54,7 @@ def test_no_uid_causes_error():
 
 
 def test_attempt_to_add_uid_key_causes_error():
-    starting_db = MockDatabase(STARTING_DB_INPUT)
+    starting_db = create_db()
     with pytest.raises(ValueError):
         o_obj.handle_helper(
             starting_db,
@@ -65,7 +65,7 @@ def test_attempt_to_add_uid_key_causes_error():
         )
 
 def test_update_to_non_json():
-    starting_db = MockDatabase(STARTING_DB_INPUT)
+    starting_db = create_db()
     with pytest.raises(ValueError):
         o_obj.handle_helper(
             starting_db,

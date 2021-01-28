@@ -1,44 +1,46 @@
 import pytest
 from src import get_object as g_obj
-from mock_db import MockDatabase
-import json
+from mock_db import create_db
+import moto
+import boto3
 
-STARTING_DB_INPUT = {
-    "some_uid": {
+STARTING_DB_INPUT = [
+    {
+        "uid": "some_uid",
         "firstName": "Andrey",
         "lastName": "Kolmogorov",
         "dob": "25 April 1903"
     }
-}
+]
 
-BASE_URL = "https://myapp.com/api"
+BASE_URL = "https://myapp.com/api/objects"
 
-
+@moto.mock_dynamodb2
 def test_get_one_valid_obj():
-    db = MockDatabase(STARTING_DB_INPUT)
-    actual: dict = g_obj.handle_helper(db, "some_uid")
-    expected = STARTING_DB_INPUT["some_uid"]
-    expected["uid"] = "some_uid"
-    assert actual == expected
+    db = create_db(STARTING_DB_INPUT)
+    actual: dict = g_obj.get_single_object_from_db(db, BASE_URL, "some_uid")
+    assert actual == STARTING_DB_INPUT[0]
 
-
+@moto.mock_dynamodb2
 def test_get_all_valid_objs():
-    db = MockDatabase(STARTING_DB_INPUT)
-    db.put_item(item={
+    db = create_db(STARTING_DB_INPUT)
+    db.put_item(Item={
         "uid": "another_uid",
         "data": "something"
     })
-    actual = g_obj.handle_helper(db)
-    assert set(json.loads(actual)) == {
-        f"{BASE_URL}/api/objects/another_uid",
-        f"{BASE_URL}/api/objects/some_uid"
+    paginator = boto3.client("dynamodb", 'us-east-1').get_paginator("scan").paginate(TableName=db.table_name)
+    actual = map(lambda x: x["url"], g_obj.get_all_object_links_from_db(paginator, BASE_URL))
+    assert set(actual) == {
+        f"{BASE_URL}/another_uid",
+        f"{BASE_URL}/some_uid"
     }
 
-
+@moto.mock_dynamodb2
 def test_get_invalid_obj():
-    db = MockDatabase()
+    db = create_db()
     with pytest.raises(ValueError):
-        g_obj.handle_helper(
+        g_obj.get_single_object_from_db(
             db,
+            BASE_URL,
             "bad uid"
         )
