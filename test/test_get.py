@@ -15,14 +15,22 @@ STARTING_DB_INPUT = [
 
 BASE_URL = "https://myapp.com/api/objects"
 
+
 @moto.mock_dynamodb2
 def test_get_one_valid_obj():
+    """
+    Getting a valid object
+    """
     db = create_db(STARTING_DB_INPUT)
-    actual: dict = g_obj.get_single_object_from_db(db, BASE_URL, "some_uid")
+    actual: dict = g_obj.get_single_object_from_db(db, "some_uid")
     assert actual == STARTING_DB_INPUT[0]
+
 
 @moto.mock_dynamodb2
 def test_get_all_valid_objs():
+    """
+    Getting all objects
+    """
     db = create_db(STARTING_DB_INPUT)
     db.put_item(Item={
         "uid": "another_uid",
@@ -37,10 +45,12 @@ def test_get_all_valid_objs():
 
 @moto.mock_dynamodb2
 def test_get_invalid_obj():
+    """
+    Getting an object that doesn't exist
+    """
     db = create_db()
     with pytest.raises(ValueError):
         g_obj.get_single_object_from_db(
             db,
-            BASE_URL,
             "bad uid"
         )
