@@ -2,3 +2,4 @@ venv
 .aws-sam
 .pytest_cache
 .idea
+**/__pycache__/
