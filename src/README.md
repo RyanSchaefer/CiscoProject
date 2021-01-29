@@ -3,6 +3,8 @@
 * Further decouple what storage medium is being used from the lambda
   * Could be done with something like a db connection and a function to call on that connection
 * Introduce further mocking to extensively test handler functions
+* Move my domain from Google Domains to AWS Route53 and add a CNAME from the HttpApi
+  to the custom domain
 
 ## Things to add
 * creating/reading/updating/deleting just a specific key in an item through a specific url path (ex. `{"birthday": "new"}` -> `PUT {api}/{uid}/birthday`
@@ -11,3 +13,4 @@
   bucket
 * Introducing a security token to protect certain objects (public / private setting)
   * Api call to see how many objects you stored with a private key
+  
