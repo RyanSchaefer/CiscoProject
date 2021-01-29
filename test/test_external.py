@@ -1,6 +1,7 @@
 import pytest
 import requests
 import json
+import os
 
 URL = "https://b3xkoqdorb.execute-api.us-east-1.amazonaws.com/api/objects"
 
@@ -10,7 +11,7 @@ TEST_OBJECT = {
     "dob": "25 April 1903"
 }
 
-
+@pytest.mark.skipif(not os.environ.get("TEST_DEPLOYMENT"), reason="Cannot confirm that API is deployed yet")
 def test_crud_operation():
     """
     Creates an object then runs an get, an update, and a delete
